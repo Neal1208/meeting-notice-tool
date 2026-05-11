@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>会议通知发布工具</title>
+<script src="jszip.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f0f2f5; min-height: 100vh; }
+  .header { background: #1a73e8; color: #fff; padding: 16px 24px; text-align: center; font-size: 18px; font-weight: 600; letter-spacing: 1px; }
+  .container { max-width: 720px; margin: 20px auto; padding: 0 16px 40px; }
+  .card { background: #fff; border-radius: 10px; padding: 24px 28px; box-shadow: 0 2px 12px rgba(0,0,0,.06); margin-bottom: 16px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group:last-child { margin-bottom: 0; }
+  label { display: block; font-size: 14px; font-weight: 600; color: #333; margin-bottom: 4px; }
+  .hint { font-weight: 400; color: #999; font-size: 12px; }
+  input[type="text"], textarea { width: 100%; padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 6px; font-size: 14px; line-height: 1.6; color: #333; transition: border-color .2s; }
+  input[type="text"]:focus, textarea:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,.12); }
+  input[type="date"] { padding: 8px 12px; border: 1px solid #d0d5dd; border-radius: 6px; font-size: 14px; color: #333; }
+  input[type="date"]:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 3px rgba(26,115,232,.12); }
+  textarea { resize: vertical; min-height: 64px; }
+  .row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .row .form-group { flex: 1; min-width: 130px; }
+  .mt8 { margin-top: 8px; }
+  .radio-group { display: flex; gap: 20px; padding: 6px 0; }
+  .radio-group label { display: flex; align-items: center; gap: 6px; font-weight: 400; cursor: pointer; font-size: 14px; }
+  .radio-group input[type="radio"] { accent-color: #1a73e8; }
+  .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 6px; max-height: 280px; overflow-y: auto; padding: 8px; border: 1px solid #e0e0e0; border-radius: 6px; background: #fafafa; }
+  .checkbox-grid label { display: flex; align-items: center; gap: 5px; font-weight: 400; font-size: 13px; cursor: pointer; padding: 2px 4px; border-radius: 3px; }
+  .checkbox-grid label:hover { background: #e8f0fe; }
+  .checkbox-grid input[type="checkbox"] { accent-color: #1a73e8; }
+  .check-actions { display: flex; gap: 10px; margin-bottom: 6px; }
+  .btn-link { background: none; border: none; color: #1a73e8; cursor: pointer; font-size: 12px; padding: 0; }
+  .btn-link:hover { text-decoration: underline; }
+  .selected-count { font-size: 12px; color: #888; line-height: 24px; }
+  .agenda-item { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .agenda-item .num { color: #666; font-size: 13px; min-width: 20px; text-align: right; }
+  .agenda-item input { flex: 1; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; border: 1px solid #d0d5dd; border-radius: 5px; cursor: pointer; background: #fff; color: #555; }
+  .btn-sm:hover { background: #f0f0f0; }
+  .btn-sm.danger { color: #c62828; border-color: #f5c6cb; }
+  .btn-sm.danger:hover { background: #fdf2f2; }
+  .btn-primary { display: block; width: 100%; padding: 12px; background: #1a73e8; color: #fff; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: background .2s; }
+  .btn-primary:hover { background: #1557b0; }
+  .btn-primary:disabled { background: #8cb8f0; cursor: not-allowed; }
+  .msg { padding: 10px 14px; border-radius: 6px; margin-bottom: 12px; font-size: 13px; display: none; }
+  .msg.ok { display: block; background: #e6f7e6; color: #2e7d32; }
+  .msg.err { display: block; background: #fdecea; color: #c62828; }
+  .preview { margin-top:6px; font-size:13px; color:#888; }
+</style>
+</head>
+<body>
+<div class="header">会议通知发布工具</div>
+<div class="container">
+  <div id="msg" class="msg"></div>
+  <form id="mainForm">
+    <div class="card">
+      <div class="form-group">
+        <label>会议名称 <span class="hint">（必选）</span></label>
+        <div class="radio-group">
+          <label><input type="radio" name="meeting_type" value="线上" checked> 线上研讨</label>
+          <label><input type="radio" name="meeting_type" value="线下"> 线下研讨</label>
+        </div>
+        <div class="preview">预览：PLM-CBTA-整体大纲-多发商照开发<span id="mtp">线上</span>研讨</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="form-group">
+        <label>会议时间 <span class="hint">（必填）</span></label>
+        <div class="row"><div class="form-group"><span class="hint">开始日期</span><input type="date" name="date_start" required></div><div class="form-group"><span class="hint">开始时间</span><input type="text" name="time_start" placeholder="如 下午19:00"></div></div>
+        <div class="row mt8"><div class="form-group"><span class="hint">结束日期（单天留空）</span><input type="date" name="date_end"></div><div class="form-group"><span class="hint">结束时间</span><input type="text" name="time_end" placeholder="如 下午17:00"></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="form-group"><label>会议地点 <span class="hint">（必填）</span></label><input type="text" name="place" placeholder="如：线上腾讯会议（会议号：xxx）" required></div>
+    </div>
+    <div class="card">
+      <div class="form-group">
+        <label>参会人员</label>
+        <div class="check-actions"><button type="button" class="btn-link" onclick="selectAll()">全选</button><button type="button" class="btn-link" onclick="deselectAll()">取消全选</button><span class="selected-count" id="sc">已选 0 人</span></div>
+        <div class="checkbox-grid" id="cg"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="form-group"><label>会议安排</label><div id="agendaList"><div class="agenda-item"><span class="num">1.</span><input type="text" placeholder="第1项安排"><button type="button" class="btn-sm danger" onclick="rmA(this)" style="display:none">×</button></div></div><button type="button" class="btn-sm" onclick="addA()" style="margin-top:6px">+ 添加一项</button></div>
+    </div>
+    <div class="card">
+      <div class="row"><div class="form-group"><label>联系人姓名</label><input type="text" name="contact_name" placeholder="姓名"></div><div class="form-group"><label>联系电话</label><input type="text" name="contact_phone" placeholder="电话"></div></div>
+    </div>
+    <div class="card">
+      <div class="form-group"><label>备注 <span class="hint">（可选）</span></label><textarea name="notes" rows="2" placeholder="日程安排等补充信息"></textarea></div>
+    </div>
+    <button type="submit" class="btn-primary" id="btn">生成 Word 文件</button>
+  </form>
+</div>
+
+<script>
+// ==== Personnel ====
+const PERSONNEL = ['关禹','姜超','陈清','仝航航','高振兴','高函杨','牟云天','刘西琪','李国珍','王天瑞','杨建龙','皮佳璐','蔡中长','张晓晴','陈丰华','潘路生','司海青','邓超','康永杰','程海涛','高培新','金悦晨','王倩','汪海波','刘超智','徐亚楠','刘京茂'];
+const cg = document.getElementById('cg');
+PERSONNEL.forEach(name => {const l=document.createElement('label');l.innerHTML=`<input type="checkbox" name="att" value="${name}" onchange="upCnt()"> ${name}`;cg.appendChild(l);});
+function upCnt(){document.getElementById('sc').textContent='已选 '+document.querySelectorAll('input[name="att"]:checked').length+' 人';}
+function selectAll(){document.querySelectorAll('input[name="att"]').forEach(c=>c.checked=true);upCnt();}
+function deselectAll(){document.querySelectorAll('input[name="att"]').forEach(c=>c.checked=false);upCnt();}
+
+// ==== Agenda ====
+function addA(){const l=document.getElementById('agendaList'),n=l.querySelectorAll('.agenda-item').length+1,d=document.createElement('div');d.className='agenda-item';d.innerHTML=`<span class="num">${n}.</span><input type="text" placeholder="第${n}项安排"><button type="button" class="btn-sm danger" onclick="rmA(this)">×</button>`;l.appendChild(d);updA();}
+function rmA(b){const l=document.getElementById('agendaList').querySelectorAll('.agenda-item');if(l.length<=1)return;b.parentElement.remove();updA();}
+function updA(){document.getElementById('agendaList').querySelectorAll('.agenda-item').forEach((e,i)=>{e.querySelector('.num').textContent=(i+1)+'.';const d=e.querySelector('.btn-sm');if(d)d.style.display=document.getElementById('agendaList').querySelectorAll('.agenda-item').length>1?'':'none';});}
+
+// ==== Meeting type ====
+document.querySelectorAll('input[name="meeting_type"]').forEach(r=>r.addEventListener('change',()=>document.getElementById('mtp').textContent=r.value));
+
+// ==== Default date ====
+document.querySelector('input[name="date_start"]').value=new Date().toISOString().slice(0,10);
+
+// ==== Format date ====
+function fmtD(iso){if(!iso)return'';const[y,m,d]=iso.split('-');return y+'年'+parseInt(m)+'月'+parseInt(d)+'日';}
+
+// ==== Template (base64) ====
+const TPL_B64 = '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';
+
+// ==== Generate ====
+document.getElementById('mainForm').addEventListener('submit', async function(e){
+  e.preventDefault();
+  const btn=document.getElementById('btn'),msg=document.getElementById('msg');
+  btn.disabled=true;btn.textContent='正在生成...';msg.className='msg';
+
+  try {
+    const fd=new FormData(e.target);
+
+    // Build meeting name
+    const meetingType=fd.get('meeting_type');
+    const meetingName='PLM-CBTA-整体大纲-多发商照开发'+meetingType+'研讨';
+
+    // Build meeting time
+    const ds=fmtD(fd.get('date_start')),ts=fd.get('time_start')||'';
+    const de=fmtD(fd.get('date_end')),te=fd.get('time_end')||'';
+    let meetingTime=de?(ds+ts+'-'+de+te):(ds+ts);
+
+    // Attendees
+    const attendees=fd.getAll('att').join(' ');
+
+    // Agenda lines
+    const agendaLines=[];
+    document.querySelectorAll('#agendaList input').forEach(i=>{if(i.value.trim())agendaLines.push(i.value.trim());});
+
+    // Contact
+    const contact=((fd.get('contact_name')||'')+' '+(fd.get('contact_phone')||'')).trim();
+    const notes=fd.get('notes')||'';
+    const dateStr=ds;
+
+    // Decode template
+    const tplBytes=Uint8Array.from(atob(TPL_B64),c=>c.charCodeAt(0));
+
+    // Unzip template
+    const zip=await JSZip.loadAsync(tplBytes);
+
+    // Get document.xml
+    let docXml=await zip.file('word/document.xml').async('text');
+
+    // Parse XML
+    const parser=new DOMParser();
+    const xmlDoc=parser.parseFromString(docXml,'text/xml');
+
+    // Namespace resolver
+    const ns='http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    function qn(tag){return '{'+ns+'}'+tag;}
+
+    // Get all table rows
+    const trs=xmlDoc.getElementsByTagNameNS(ns,'tr');
+    console.log('Found',trs.length,'table rows');
+
+    // ---- Helper: get all text from a cell ----
+    function getCellText(tc){
+      const ts=tc.getElementsByTagNameNS(ns,'t');
+      return Array.from(ts).map(t=>t.textContent||'').join('');
+    }
+
+    // ---- Helper: set text in a cell, distributing across existing runs ----
+    function setCellText(tc,newText){
+      const paras=tc.getElementsByTagNameNS(ns,'p');
+      if(paras.length===0)return;
+
+      // Keep only first paragraph, remove the rest
+      while(paras.length>1){
+        paras[paras.length-1].parentNode.removeChild(paras[paras.length-1]);
+      }
+
+      // Use first paragraph
+      const runs=paras[0].getElementsByTagNameNS(ns,'r');
+      if(runs.length===0){
+        // No runs, create one
+        const r=xmlDoc.createElementNS(ns,'r');
+        const t=xmlDoc.createElementNS(ns,'t');
+        t.setAttribute('xml:space','preserve');
+        t.textContent=newText;
+        r.appendChild(t);
+        paras[0].appendChild(r);
+      } else if(runs.length===1){
+        // One run - put all text there
+        const ts=runs[0].getElementsByTagNameNS(ns,'t');
+        if(ts.length>0){
+          ts[0].textContent=newText;
+        } else {
+          // Run has no w:t element, create one
+          const t=xmlDoc.createElementNS(ns,'t');
+          t.setAttribute('xml:space','preserve');
+          t.textContent=newText;
+          runs[0].appendChild(t);
+        }
+      } else {
+        // Multiple runs - put text in first, clear rest
+        const ts0=runs[0].getElementsByTagNameNS(ns,'t');
+        if(ts0.length>0){
+          ts0[0].textContent=newText;
+        } else {
+          const t=xmlDoc.createElementNS(ns,'t');
+          t.setAttribute('xml:space','preserve');
+          t.textContent=newText;
+          runs[0].appendChild(t);
+        }
+        for(let i=1;i<runs.length;i++){
+          const ts=runs[i].getElementsByTagNameNS(ns,'t');
+          for(const t of ts) t.textContent='';
+        }
+      }
+    }
+
+    // ---- Helper: set multi-line text in a cell ----
+    function setCellMultiline(tc,lines){
+      const paras=tc.getElementsByTagNameNS(ns,'p');
+      if(paras.length===0)return;
+      const firstPara=paras[0];
+
+      // Remove extra paragraphs
+      while(paras.length>1){
+        paras[paras.length-1].parentNode.removeChild(paras[paras.length-1]);
+      }
+
+      if(!lines||lines.length===0){
+        setCellText(tc,'');
+        return;
+      }
+
+      // Set first line
+      const runs=firstPara.getElementsByTagNameNS(ns,'r');
+      if(runs.length>0){
+        const ts=runs[0].getElementsByTagNameNS(ns,'t');
+        if(ts.length>0) ts[0].textContent=lines[0];
+        // Clear other runs
+        for(let i=1;i<runs.length;i++){
+          const ts=runs[i].getElementsByTagNameNS(ns,'t');
+          for(const t of ts) t.textContent='';
+        }
+      }
+
+      // For additional lines, clone first paragraph
+      for(let i=1;i<lines.length;i++){
+        const clone=firstPara.cloneNode(true);
+        const cruns=clone.getElementsByTagNameNS(ns,'r');
+        if(cruns.length>0){
+          const cts=cruns[0].getElementsByTagNameNS(ns,'t');
+          if(cts.length>0) cts[0].textContent=lines[i];
+          for(let j=1;j<cruns.length;j++){
+            const cts2=cruns[j].getElementsByTagNameNS(ns,'t');
+            for(const t of cts2) t.textContent='';
+          }
+        }
+        firstPara.parentNode.insertBefore(clone,firstPara.nextSibling);
+      }
+    }
+
+    // Identify content cells
+    // The template has 7 table rows, each with 2 cells
+    // Cell[1] of each row is the content cell
+    // We need to find the right table (there might be only one)
+
+    const tbls=xmlDoc.getElementsByTagNameNS(ns,'tbl');
+    if(tbls.length===0) throw new Error('模板中没有表格');
+
+    const rows=tbls[0].getElementsByTagNameNS(ns,'tr');
+    if(rows.length<7) throw new Error('表格行数不足: '+rows.length);
+
+    function getCell(row,ci){
+      const tcs=row.getElementsByTagNameNS(ns,'tc');
+      return tcs[ci]||null;
+    }
+
+    // Row 0: meeting name
+    setCellText(getCell(rows[0],1),meetingName);
+
+    // Row 1: meeting time
+    setCellText(getCell(rows[1],1),meetingTime);
+
+    // Row 2: meeting place
+    setCellText(getCell(rows[2],1),fd.get('place')||'');
+
+    // Row 3: attendees
+    setCellText(getCell(rows[3],1),attendees);
+
+    // Row 4: agenda (multiline)
+    setCellMultiline(getCell(rows[4],1),agendaLines);
+
+    // Row 5: contact
+    setCellText(getCell(rows[5],1),contact);
+
+    // Row 6: notes
+    setCellText(getCell(rows[6],1),notes);
+
+    // Date paragraph (last paragraph with 年/月/日)
+    const allParas=xmlDoc.getElementsByTagNameNS(ns,'p');
+    for(let i=allParas.length-1;i>=0;i--){
+      const txt=allParas[i].textContent||'';
+      if(txt.includes('年')&&txt.includes('月')&&txt.includes('日')){
+        const r=allParas[i].getElementsByTagNameNS(ns,'r');
+        if(r.length>0){
+          const ts=r[0].getElementsByTagNameNS(ns,'t');
+          if(ts.length>0) ts[0].textContent=dateStr;
+          for(let j=1;j<r.length;j++){
+            const ts2=r[j].getElementsByTagNameNS(ns,'t');
+            for(const t of ts2) t.textContent='';
+          }
+        }
+        break;
+      }
+    }
+
+    // Serialize back to XML
+    const serializer=new XMLSerializer();
+    docXml=serializer.serializeToString(xmlDoc);
+
+    // Update the zip
+    zip.file('word/document.xml',docXml);
+
+    // Generate new docx
+    const outBlob=await zip.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+
+    // Download
+    const url=URL.createObjectURL(outBlob);
+    const a=document.createElement('a');
+    a.href=url;
+    a.download='会议通知_'+meetingName.slice(0,30)+'.docx';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    msg.textContent='Word 文件已生成并开始下载';
+    msg.className='msg ok';
+  } catch(err){
+    console.error(err);
+    msg.textContent='生成失败：'+err.message;
+    msg.className='msg err';
+  } finally{
+    btn.disabled=false;
+    btn.textContent='生成 Word 文件';
+  }
+});
+</script>
+</body>
+</html>
