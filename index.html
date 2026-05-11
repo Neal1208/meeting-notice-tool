@@ -97,7 +97,7 @@
 
 <script>
 // ==== Personnel ====
-const PERSONNEL = ['关禹','姜超','陈清','仝航航','高振兴','高函杨','牟云天','刘西琪','李国珍','王天瑞','杨建龙','皮佳璐','蔡中长','张晓晴','陈丰华','潘路生','司海青','邓超','康永杰','程海涛','高培新','金悦晨','王倩','汪海波','刘超智','徐亚楠','刘京茂'];
+const PERSONNEL = ['关禹','姜超','陈清','仝航航','高振兴','高函杨','牟云天','刘西琪','李国珍','王天瑞','杨建龙','皮佳璐','蔡中长','张晓晴','陈丰华','潘路生','司海青','邓超','康永杰','程海涛','高培新','金悦晨','王倩','汪海波','刘超智','徐亚楠','刘京茂','何勇'];
 const cg = document.getElementById('cg');
 PERSONNEL.forEach(name => {const l=document.createElement('label');l.innerHTML=`<input type="checkbox" name="att" value="${name}" onchange="upCnt()"> ${name}`;cg.appendChild(l);});
 function upCnt(){document.getElementById('sc').textContent='已选 '+document.querySelectorAll('input[name="att"]:checked').length+' 人';}
